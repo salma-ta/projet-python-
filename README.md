@@ -1,7 +1,8 @@
 ##              L’entreprise MeetingPro : application de gestion de la réservation des salles
 
 
-## réalisé par : Narjis Nejjar   Salma Taouil
+## réalisé par : Narjis Nejjar 
+                Salma Taouil
 
 
 ## contexte du projet :
