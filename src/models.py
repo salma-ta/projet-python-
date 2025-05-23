@@ -1,5 +1,5 @@
 import uuid
-
+#model#
 class Client:
     def __init__(self, nom, email):
         self.nom = nom
@@ -12,7 +12,7 @@ class Client:
 class Salle:
     def __init__(self, nom, type_salle, capacite):
         self.nom = nom
-        self.type_salle = type_salle  # 'standard', 'conference', 'informatique'
+        self.type_salle = type_salle  #  'conference', 'informatique'
         self.capacite = capacite
 
     def __repr__(self):
