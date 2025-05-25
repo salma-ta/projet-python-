@@ -10,9 +10,5 @@ def load_data(filename):
 
 def save_data(filename, data):
     with open(filename, "w") as f:
-        json.dump(data, f, indent=4)
-<<<<<<< HEAD
-
-
-=======
->>>>>>> 0f5137847c23e0ce66ae911608b3f8b2e203a886
+      json.dump(data, f, indent=4)
+        
