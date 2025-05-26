@@ -145,11 +145,25 @@ def reserver_salle_ui(parent):
 
     search_var.trace_add("write", filtrer_clients)
 
+    # === Type de salle ===
+    tk.Label(parent, text="Type de salle :").pack(pady=5)
+    type_var = tk.StringVar()
+    type_var.set("Standard")  # valeur par défaut
+    tk.Radiobutton(parent, text="Standard", variable=type_var, value="Standard").pack(anchor="w", padx=20)
+    tk.Radiobutton(parent, text="Conférence", variable=type_var, value="Conférence").pack(anchor="w", padx=20)
+    tk.Radiobutton(parent, text="Informatique", variable=type_var, value="Informatique").pack(anchor="w", padx=20)
+
+    
+    tk.Label(parent, text="Salle disponible :").pack(pady=5)
+    combo_salle = ttk.Combobox(parent, width=30, state="readonly")
+    combo_salle.pack()
+
     # === Boutons Valider / Annuler ===
     def valider():
         debut = entry_debut.get().strip()
         fin = entry_fin.get().strip()
         client_nom = combo_client.get().strip()
+        
 
         if not debut or not fin or not client_nom:
             messagebox.showerror("Erreur", "Tous les champs sont obligatoires.")
