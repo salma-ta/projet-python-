@@ -110,30 +110,25 @@ def ajouter_salle_ui():
     tk.Button(bouton_frame, text="Annuler", width=12, bg="#dc3545", fg="white", command=annuler).pack(side=tk.LEFT, padx=5)
 
 #FENETRE POUR RESRVER SALLE 
-
-
 def reserver_salle_ui(parent):
-    # === Zone Début ===
-    tk.Label(parent, text="Date et heure de début (jj/mm/aaaa hh:mm) :").pack(pady=5)
+    from datetime import datetime
+
+    tk.Label(parent, text="Date de début (jj/mm/aaaa hh:mm)").pack(pady=5)
     entry_debut = tk.Entry(parent, width=30)
     entry_debut.pack()
 
-    # === Zone Fin ===
-    tk.Label(parent, text="Date et heure de fin (jj/mm/aaaa hh:mm) :").pack(pady=5)
+    tk.Label(parent, text="Date de fin (jj/mm/aaaa hh:mm)").pack(pady=5)
     entry_fin = tk.Entry(parent, width=30)
     entry_fin.pack()
 
-    # === Recherche de client ===
     tk.Label(parent, text="Client :").pack(pady=5)
     search_var = tk.StringVar()
     entry_search = tk.Entry(parent, textvariable=search_var, width=30)
     entry_search.pack()
 
-    # === Liste déroulante ===
     combo_client = ttk.Combobox(parent, width=30)
     combo_client.pack()
 
-    # === Chargement des clients ===
     data = load_data("data.json")
     clients = [client["nom"] for client in data.get("clients", [])]
     combo_client["values"] = clients
@@ -145,53 +140,290 @@ def reserver_salle_ui(parent):
 
     search_var.trace_add("write", filtrer_clients)
 
-    # === Type de salle ===
     tk.Label(parent, text="Type de salle :").pack(pady=5)
-    type_var = tk.StringVar()
-    type_var.set("Standard")  # valeur par défaut
-    tk.Radiobutton(parent, text="Standard", variable=type_var, value="Standard").pack(anchor="w", padx=20)
-    tk.Radiobutton(parent, text="Conférence", variable=type_var, value="Conférence").pack(anchor="w", padx=20)
-    tk.Radiobutton(parent, text="Informatique", variable=type_var, value="Informatique").pack(anchor="w", padx=20)
+    type_var = tk.StringVar(value="Standard")
+    for t in ["Standard", "Conférence", "Informatique"]:
+        tk.Radiobutton(parent, text=t, variable=type_var, value=t).pack(anchor="w", padx=20)
 
-    
     tk.Label(parent, text="Salle disponible :").pack(pady=5)
     combo_salle = ttk.Combobox(parent, width=30, state="readonly")
     combo_salle.pack()
 
-    # === Boutons Valider / Annuler ===
+    etat = {"salles_chargees": False}
+
     def valider():
         debut = entry_debut.get().strip()
         fin = entry_fin.get().strip()
         client_nom = combo_client.get().strip()
-        
 
-        if not debut or not fin or not client_nom:
-            messagebox.showerror("Erreur", "Tous les champs sont obligatoires.")
-            return
+        if not etat["salles_chargees"]:
+            # === Étape 1 : vérifier et charger les salles ===
+            if not debut or not fin or not client_nom:
+                messagebox.showerror("Erreur", "Tous les champs doivent être remplis.")
+                return
 
-        try:
-            date_debut = datetime.strptime(debut, "%d/%m/%Y %H:%M")
-            date_fin = datetime.strptime(fin, "%d/%m/%Y %H:%M")
-        except ValueError:
-            messagebox.showerror("Erreur", "Le format de date doit être jj/mm/aaaa hh:mm.")
-            return
+            try:
+                date_debut = datetime.strptime(debut, "%d/%m/%Y %H:%M")
+                date_fin = datetime.strptime(fin, "%d/%m/%Y %H:%M")
+            except:
+                messagebox.showerror("Erreur", "Format de date invalide.")
+                return
 
-        if date_fin <= date_debut:
-            messagebox.showerror("Erreur", "La date de fin doit être après la date de début.")
-            return
+            if date_fin <= date_debut:
+                messagebox.showerror("Erreur", "La date de fin doit être après la date de début.")
+                return
 
-        messagebox.showinfo("Succès", f"Salle réservée pour {client_nom} de {debut} à {fin}.")
+            data = load_data("data.json")
+            type_salle = type_var.get()
+            salles_dispo = []
+
+            for salle in data["salles"]:
+                if salle["type_salle"] != type_salle:
+                    continue
+
+                conflits = False
+                for res in data["reservations"]:
+                    if res["id_salle"] == salle["identifiant"]:
+                        res_debut = datetime.strptime(res["debut"], "%d/%m/%Y %H:%M")
+                        res_fin = datetime.strptime(res["fin"], "%d/%m/%Y %H:%M")
+                        if not (date_fin <= res_debut or date_debut >= res_fin):
+                            conflits = True
+                            break
+
+                if not conflits:
+                    salles_dispo.append(salle["identifiant"])
+
+            combo_salle["values"] = salles_dispo
+            etat["salles_chargees"] = True
+
+            if not salles_dispo:
+                messagebox.showwarning("Aucune salle", "Aucune salle disponible pour ce créneau.")
+            else:
+                messagebox.showinfo("Salles disponibles", "Veuillez sélectionner une salle et cliquer à nouveau sur Valider.")
+        else:
+            # === Étape 2 : Enregistrement + résumé ===
+            salle_choisie = combo_salle.get().strip()
+            if not salle_choisie:
+                messagebox.showerror("Erreur", "Veuillez sélectionner une salle.")
+                return
+
+            reservation = {
+                "client": client_nom,
+                "id_salle": salle_choisie,
+                "debut": debut,
+                "fin": fin
+            }
+            data["reservations"].append(reservation)
+            save_data("data.json", data)
+
+            # === Résumé ===
+            for salle in data["salles"]:
+                if salle["identifiant"] == salle_choisie:
+                    capacite = salle["capacite"]
+                    type_salle = salle["type_salle"]
+                    break
+
+            delta = datetime.strptime(fin, "%d/%m/%Y %H:%M") - datetime.strptime(debut, "%d/%m/%Y %H:%M")
+            duree = int(delta.total_seconds() // 3600)
+
+            resume = tk.Toplevel()
+            resume.title("Réservation Validée!")
+
+            tk.Label(resume, text="✅ Réservation confirmée !", font=("Arial", 14, "bold"), fg="#28a745").pack(pady=10)
+            infos = f"""\
+Client : {client_nom}
+Début : {debut}
+Fin : {fin}
+Salle : {salle_choisie}
+Durée : {duree}h
+Type : {type_salle}
+Capacité : {capacite}"""
+            tk.Label(resume, text=infos, justify="left", font=("Arial", 11)).pack(padx=20, pady=10)
+            tk.Button(resume, text="Menu principal", bg="#007bff", fg="white", width=20, command=resume.destroy).pack(pady=10)
+
+            # Nettoyage
+            entry_debut.delete(0, tk.END)
+            entry_fin.delete(0, tk.END)
+            entry_search.delete(0, tk.END)
+            combo_client.set("")
+            combo_salle.set("")
+            etat["salles_chargees"] = False
 
     def annuler():
         entry_debut.delete(0, tk.END)
         entry_fin.delete(0, tk.END)
         entry_search.delete(0, tk.END)
         combo_client.set("")
+        combo_salle.set("")
+        etat["salles_chargees"] = False
 
     bouton_frame = tk.Frame(parent)
     bouton_frame.pack(pady=10)
-    tk.Button(bouton_frame, text="Valider", bg="#28a745", fg="white", width=15, command=valider).pack(side=tk.LEFT, padx=5)
-    tk.Button(bouton_frame, text="Annuler", bg="#dc3545", fg="white", width=15, command=annuler).pack(side=tk.LEFT, padx=5)
+    tk.Button(bouton_frame, text="Valider", width=15, bg="#28a745", fg="white", command=valider).pack(side=tk.LEFT, padx=5)
+    tk.Button(bouton_frame, text="Annuler", width=15, bg="#dc3545", fg="white", command=annuler).pack(side=tk.LEFT, padx=5)
+
+def creer_interface_affichage(parent):
+    from datetime import datetime
+
+    # ================= Afficher Liste des Salles =================
+    def afficher_liste_salles():
+        data = load_data("data.json")
+        salles = data.get("salles", [])
+
+        if hasattr(afficher_liste_salles, "win") and afficher_liste_salles.win.winfo_exists():
+            afficher_liste_salles.win.lift()
+            return
+
+        win = tk.Toplevel()
+        afficher_liste_salles.win = win
+        win.title("Liste des salles")
+
+        tk.Label(win, text="Identifiant        Type              Capacité", font=("Arial", 10, "bold")).pack(pady=5)
+
+        if not salles:
+            tk.Label(win, text="Aucune salle enregistrée.").pack(pady=10)
+        else:
+            for s in salles:
+                ligne = f"{s['identifiant']:<18}{s['type_salle']:<18}{s['capacite']}"
+                tk.Label(win, text=ligne, anchor="w").pack()
+
+        tk.Button(win, text="Fermer", command=win.destroy).pack(pady=10)
+
+    # ================= Afficher Liste des Clients =================
+    def afficher_liste_clients():
+        data = load_data("data.json")
+        clients = data.get("clients", [])
+
+        if hasattr(afficher_liste_clients, "win") and afficher_liste_clients.win.winfo_exists():
+            afficher_liste_clients.win.lift()
+            return
+
+        win = tk.Toplevel()
+        afficher_liste_clients.win = win
+        win.title("Liste des clients")
+
+        tk.Label(win, text="Nom complet                          Email", font=("Arial", 10, "bold")).pack(pady=5)
+
+        if not clients:
+            tk.Label(win, text="Aucun client enregistré.").pack(pady=10)
+        else:
+            for c in clients:
+                ligne = f"{c['nom']:<35}{c['email']}"
+                tk.Label(win, text=ligne, anchor="w").pack()
+
+        tk.Button(win, text="Fermer", command=win.destroy).pack(pady=10)
+
+    # ================= Afficher Salles Disponibles =================
+    def afficher_salles_dispo():
+        if hasattr(afficher_salles_dispo, "win") and afficher_salles_dispo.win.winfo_exists():
+            afficher_salles_dispo.win.lift()
+            return
+
+        win = tk.Toplevel()
+        afficher_salles_dispo.win = win
+        win.title("Salles disponibles pour un créneau")
+
+        tk.Label(win, text="Début (jj/mm/aaaa hh:mm)").pack()
+        entry_debut = tk.Entry(win)
+        entry_debut.pack()
+
+        tk.Label(win, text="Fin (jj/mm/aaaa hh:mm)").pack()
+        entry_fin = tk.Entry(win)
+        entry_fin.pack()
+
+        def rechercher():
+            debut = entry_debut.get().strip()
+            fin = entry_fin.get().strip()
+            try:
+                d1 = datetime.strptime(debut, "%d/%m/%Y %H:%M")
+                d2 = datetime.strptime(fin, "%d/%m/%Y %H:%M")
+            except:
+                messagebox.showerror("Erreur", "Format de date invalide.")
+                return
+            if d2 <= d1:
+                messagebox.showerror("Erreur", "Fin doit être après début.")
+                return
+
+            data = load_data("data.json")
+            disponibles = []
+            for s in data["salles"]:
+                libre = True
+                for r in data["reservations"]:
+                    if r["id_salle"] == s["identifiant"]:
+                        r_debut = datetime.strptime(r["debut"], "%d/%m/%Y %H:%M")
+                        r_fin = datetime.strptime(r["fin"], "%d/%m/%Y %H:%M")
+                        if not (d2 <= r_debut or d1 >= r_fin):
+                            libre = False
+                            break
+                if libre:
+                    disponibles.append(f"{s['identifiant']:<10} {s['type_salle']:<15} {s['capacite']}")
+
+            for widget in win.winfo_children()[4:]:  # efface anciens résultats
+                widget.destroy()
+
+            if not disponibles:
+                tk.Label(win, text="Aucune salle n'est disponible.").pack(pady=10)
+            else:
+                tk.Label(win, text="Salle         Type            Capacité", font=("Arial", 10, "bold")).pack(pady=5)
+                for s in disponibles:
+                    tk.Label(win, text=s, anchor="w").pack()
+
+        tk.Button(win, text="Rechercher", command=rechercher).pack(pady=10)
+        tk.Button(win, text="Fermer", command=win.destroy).pack(pady=5)
+
+    # ================= Afficher Réservations d’un client =================
+    def afficher_reservations_client():
+        data = load_data("data.json")
+        clients = [c["nom"] for c in data.get("clients", [])]
+
+        if hasattr(afficher_reservations_client, "win") and afficher_reservations_client.win.winfo_exists():
+            afficher_reservations_client.win.lift()
+            return
+
+        win = tk.Toplevel()
+        afficher_reservations_client.win = win
+        win.title("Réservations d’un client")
+
+        tk.Label(win, text="Client :").pack()
+        combo = ttk.Combobox(win, values=clients, state="readonly", width=40)
+        combo.pack()
+
+        def chercher():
+            nom = combo.get()
+            resas = [r for r in data["reservations"] if r["client"] == nom]
+
+            for widget in win.winfo_children()[3:]:
+                widget.destroy()
+
+            if not resas:
+                tk.Label(win, text="Aucune réservation").pack()
+            else:
+                tk.Label(win, text="Salle     Type        Capacité  Début              Fin              Durée").pack(pady=5)
+
+                for r in resas:
+                    for s in data["salles"]:
+                        if s["identifiant"] == r["id_salle"]:
+                            type_salle = s["type_salle"]
+                            capacite = s["capacite"]
+                            break
+                    d1 = datetime.strptime(r["debut"], "%d/%m/%Y %H:%M")
+                    d2 = datetime.strptime(r["fin"], "%d/%m/%Y %H:%M")
+                    duree = f"{int((d2 - d1).total_seconds() // 3600)}h"
+
+                    ligne = f"{r['id_salle']:<10}{type_salle:<12}{capacite:<10}{r['debut']:<18}{r['fin']:<18}{duree}"
+                    tk.Label(win, text=ligne, anchor="w", font=("Arial", 9)).pack()
+
+        bouton_frame = tk.Frame(win)
+        bouton_frame.pack(pady=10)
+        tk.Button(bouton_frame, text="Valider", bg="#28a745", fg="white", command=chercher).pack(side="left", padx=5)
+        tk.Button(bouton_frame, text="Fermer", bg="#dc3545", fg="white", command=win.destroy).pack(side="left", padx=5)
+
+    # === Boutons sur l’onglet parent ===
+    tk.Button(parent, text="Afficher liste des salles", width=40, height=2, command=afficher_liste_salles).pack(pady=10)
+    tk.Button(parent, text="Afficher liste des clients", width=40, height=2, command=afficher_liste_clients).pack(pady=10)
+    tk.Button(parent, text="Afficher les salles disponibles pour un créneau", width=40, height=2, command=afficher_salles_dispo).pack(pady=10)
+    tk.Button(parent, text="Afficher les réservations d'un client", width=40, height=2, command=afficher_reservations_client).pack(pady=10)
+
 
 # === Fenêtre principale ===
 def launch_app():
@@ -206,12 +438,13 @@ def launch_app():
     ajouter_frame = ttk.Frame(notebook)
     reserver_frame = ttk.Frame(notebook)
     afficher_frame = ttk.Frame(notebook)
+    
 
     notebook.add(accueil_frame, text="Accueil")
     notebook.add(ajouter_frame, text="Ajouter")
     notebook.add(reserver_frame, text="Réserver")
     notebook.add(afficher_frame, text="Afficher")
-
+    
     # Accueil
     tk.Button(accueil_frame, text="Ajouter", width=30, height=2, command=lambda: notebook.select(1)).pack(pady=15)
     tk.Button(accueil_frame, text="Réserver", width=30, height=2, command=lambda: notebook.select(2)).pack(pady=15)
@@ -222,6 +455,7 @@ def launch_app():
     tk.Button(ajouter_frame, text="Ajouter nouvelle salle", width=30, height=2, bg="#125873", fg="white", command=ajouter_salle_ui).pack(pady=10)
     
     reserver_salle_ui(reserver_frame)
+    creer_interface_affichage(afficher_frame)
     root.mainloop()
 
 # === Lancer le programme ===

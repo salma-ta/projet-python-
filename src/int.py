@@ -53,6 +53,63 @@ def ajouter_client_ui():
 
 
 # === Fenêtre pour ajouter une salle ===
+def ajouter_salle_ui():
+    window = tk.Toplevel()
+    window.title("Ajouter une salle")
+
+    tk.Label(window, text="Identifiant de la salle :").pack(pady=(10,0))
+    entry_id = tk.Entry(window)
+    entry_id.pack()
+
+    tk.Label(window, text="Type de salle :").pack(pady=(10,0))
+    types = ["Standard", "Conférence", "Informatique"]
+    combo_type = ttk.Combobox(window, values=types, state="readonly")
+    combo_type.current(0)  # valeur par défaut
+    combo_type.pack()
+
+    tk.Label(window, text="Capacité :").pack(pady=(10,0))
+    entry_capacite = tk.Entry(window)
+    entry_capacite.pack()
+
+    def valider():
+        id_salle = entry_id.get().strip()
+        type_salle = combo_type.get()
+        capacite = entry_capacite.get().strip()
+
+        if not id_salle:
+            messagebox.showerror("Erreur", "L'identifiant est obligatoire.")
+            return
+        if not capacite.isdigit() or int(capacite) <= 0:
+            messagebox.showerror("Erreur", "La capacité doit être un nombre entier positif.")
+            return
+
+        data = load_data("data.json")
+
+        # Vérifier unicité identifiant
+        ids_existants = [s["identifiant"] for s in data["salles"]]
+        if id_salle in ids_existants:
+            messagebox.showerror("Erreur", f"L'identifiant '{id_salle}' existe déjà. Veuillez en choisir un autre.")
+            return
+
+        # Ajouter la salle
+        salle = Salle(id_salle, type_salle, int(capacite))
+        data["salles"].append(salle.__dict__)
+        save_data("data.json", data)
+        messagebox.showinfo("Succès", "Salle ajoutée avec succès.")
+        window.destroy()
+
+        # Retour à l'onglet Accueil (index 0)
+        notebook.select(0)
+
+    def annuler():
+        window.destroy()
+
+    bouton_frame = tk.Frame(window)
+    bouton_frame.pack(pady=15)
+    tk.Button(bouton_frame, text="Valider", width=12, bg="#28a745", fg="white", command=valider).pack(side=tk.LEFT, padx=5)
+    tk.Button(bouton_frame, text="Annuler", width=12, bg="#dc3545", fg="white", command=annuler).pack(side=tk.LEFT, padx=5)
+
+#FENETRE POUR RESRVER SALLE 
 def reserver_salle_ui(parent):
     from datetime import datetime
 
@@ -92,34 +149,31 @@ def reserver_salle_ui(parent):
     combo_salle = ttk.Combobox(parent, width=30, state="readonly")
     combo_salle.pack()
 
-    # === Fonction Valider à double comportement ===
     etat = {"salles_chargees": False}
 
     def valider():
         debut = entry_debut.get().strip()
         fin = entry_fin.get().strip()
         client_nom = combo_client.get().strip()
-        salle_choisie = combo_salle.get().strip()
-
-        if not debut or not fin or not client_nom:
-            messagebox.showerror("Erreur", "Tous les champs doivent être remplis.")
-            return
-
-        try:
-            date_debut = datetime.strptime(debut, "%d/%m/%Y %H:%M")
-            date_fin = datetime.strptime(fin, "%d/%m/%Y %H:%M")
-        except:
-            messagebox.showerror("Erreur", "Format de date invalide.")
-            return
-
-        if date_fin <= date_debut:
-            messagebox.showerror("Erreur", "La date de fin doit être après la date de début.")
-            return
-
-        data = load_data("data.json")
 
         if not etat["salles_chargees"]:
-            # === Étape 1 : Charger les salles disponibles ===
+            # === Étape 1 : vérifier et charger les salles ===
+            if not debut or not fin or not client_nom:
+                messagebox.showerror("Erreur", "Tous les champs doivent être remplis.")
+                return
+
+            try:
+                date_debut = datetime.strptime(debut, "%d/%m/%Y %H:%M")
+                date_fin = datetime.strptime(fin, "%d/%m/%Y %H:%M")
+            except:
+                messagebox.showerror("Erreur", "Format de date invalide.")
+                return
+
+            if date_fin <= date_debut:
+                messagebox.showerror("Erreur", "La date de fin doit être après la date de début.")
+                return
+
+            data = load_data("data.json")
             type_salle = type_var.get()
             salles_dispo = []
 
@@ -145,9 +199,10 @@ def reserver_salle_ui(parent):
             if not salles_dispo:
                 messagebox.showwarning("Aucune salle", "Aucune salle disponible pour ce créneau.")
             else:
-                messagebox.showinfo("Salles disponibles", "Veuillez sélectionner une salle dans la liste et cliquer à nouveau sur Valider.")
+                messagebox.showinfo("Salles disponibles", "Veuillez sélectionner une salle et cliquer à nouveau sur Valider.")
         else:
-            # === Étape 2 : Enregistrer la réservation ===
+            # === Étape 2 : Enregistrement + résumé ===
+            salle_choisie = combo_salle.get().strip()
             if not salle_choisie:
                 messagebox.showerror("Erreur", "Veuillez sélectionner une salle.")
                 return
@@ -161,7 +216,7 @@ def reserver_salle_ui(parent):
             data["reservations"].append(reservation)
             save_data("data.json", data)
 
-            # === Résumé après réservation ===
+            # === Résumé ===
             for salle in data["salles"]:
                 if salle["identifiant"] == salle_choisie:
                     capacite = salle["capacite"]
@@ -175,7 +230,6 @@ def reserver_salle_ui(parent):
             resume.title("Réservation Validée!")
 
             tk.Label(resume, text="✅ Réservation confirmée !", font=("Arial", 14, "bold"), fg="#28a745").pack(pady=10)
-
             infos = f"""\
 Client : {client_nom}
 Début : {debut}
@@ -184,11 +238,10 @@ Salle : {salle_choisie}
 Durée : {duree}h
 Type : {type_salle}
 Capacité : {capacite}"""
-
             tk.Label(resume, text=infos, justify="left", font=("Arial", 11)).pack(padx=20, pady=10)
             tk.Button(resume, text="Menu principal", bg="#007bff", fg="white", width=20, command=resume.destroy).pack(pady=10)
 
-            # Réinitialiser le formulaire
+            # Nettoyage
             entry_debut.delete(0, tk.END)
             entry_fin.delete(0, tk.END)
             entry_search.delete(0, tk.END)
@@ -242,4 +295,4 @@ def launch_app():
 
 # === Lancer le programme ===
 if __name__ == "__main__":
-    launch_app()  
+    launch_app()
