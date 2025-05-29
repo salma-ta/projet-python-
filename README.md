@@ -1,12 +1,20 @@
 ##              L’entreprise MeetingPro : application de gestion de la réservation des salles
 
 
-## réalisé par : Narjis Nejjar  Salma Taouil
+## réalisé par : 
+Narjis Nejjar           narjis.nejjar@uha.fr 
+Salma Taouil            salma.taouil@uha.fr
 
 
 ## contexte du projet :
 Meetinpro est une application développée en Python qui sert à la gestion des réservations des salles de coworking avec un interphace graphique .
-l'utilisateur peut gérer les clients , les salles , et les disponibilités .
+
+L'application permet de :
+-Gérer les clients (ajout, consultation)
+-Gérer différents types de salles (Standard, Conférence, Informatique)
+-Effectuer des réservations avec gestion des conflits
+-Consulter les disponibilités et réservations
+-Sauvegarder les données en JSON
 
 
 les types des salles à gérer:
@@ -31,8 +39,11 @@ les principales fonctionnalités :
 ## structure de projet :
 PROJET PYTHON/
 │
-├── Readme.md                       ##description du projet
+├── README.md            ##description du projet
 │
-├──src                              ##code source 
-│
-├──tests                            ##tests unitaires
+├──src/
+│    │──models
+│    │── interphace graphique     
+│    │──database
+│──tests/                ##tests unitaires
+│   │──test              
