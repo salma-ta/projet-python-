@@ -10,20 +10,20 @@ class Client:
         return f"Client({self.nom}, {self.email}, {self.id})"
 
 class Salle:
-    def __init__(self, nom, type_salle, capacite):
-        self.nom = nom
+    def __init__(self, identifiant, type_salle, capacite):
+        self.identifiant = identifiant
         self.type_salle = type_salle  #  'conference', 'informatique'
         self.capacite = capacite
 
     def __repr__(self):
-        return f"Salle({self.nom}, {self.type_salle}, {self.capacite})"
+        return f"Salle({self.identifiant}, {self.type_salle}, {self.capacite})"
 
 from datetime import datetime
 
 class Reservation:
-    def __init__(self, client_id, nom_salle, debut, fin):
+    def __init__(self, client_id, identifiant, debut, fin):
         self.client_id = client_id
-        self.nom_salle = nom_salle
+        self.identifiant = identifiant
         self.debut = datetime.strptime(debut, "%Y-%m-%d %H:%M")
         self.fin = datetime.strptime(fin, "%Y-%m-%d %H:%M")
 

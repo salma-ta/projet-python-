@@ -1,0 +1,24 @@
+{
+    "clients": [
+        {
+            "nom": "Kam David",
+            "email": "Kam@gamil.com",
+            "id": "94925bd5-63b9-42af-882d-7c10cdad954a"
+        }
+    ],
+    "salles": [
+        {
+            "identifiant": "12",
+            "type_salle": "Standard",
+            "capacite": 2
+        }
+    ],
+    "reservations": [
+        {
+            "client": "Kam David",
+            "id_salle": "12",
+            "debut": "30/05/2025 17:00",
+            "fin": "30/05/2025 18:00"
+        }
+    ]
+}

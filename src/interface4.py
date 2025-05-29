@@ -149,9 +149,14 @@ def reserver_salle_ui(parent):
     combo_salle = ttk.Combobox(parent, width=30, state="readonly")
     combo_salle.pack()
 
+    data = load_data("data.json")
+    salles = [salle["identifiant"] for salle in data.get("salles", [])]
+    combo_salle["values"] = salles
+
     etat = {"salles_chargees": False}
 
     def valider():
+        data = load_data("data.json")
         debut = entry_debut.get().strip()
         fin = entry_fin.get().strip()
         client_nom = combo_client.get().strip()
