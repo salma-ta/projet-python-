@@ -4,6 +4,11 @@
             "nom": "Kam David",
             "email": "Kam@gamil.com",
             "id": "94925bd5-63b9-42af-882d-7c10cdad954a"
+        },
+        {
+            "nom": "Taouil Salma",
+            "email": "salma@gmail.com",
+            "id": "19457381-fc24-4558-afe5-ed0119c49a24"
         }
     ],
     "salles": [
@@ -11,6 +16,11 @@
             "identifiant": "12",
             "type_salle": "Standard",
             "capacite": 2
+        },
+        {
+            "identifiant": "2",
+            "type_salle": "Informatique",
+            "capacite": 5
         }
     ],
     "reservations": [
@@ -19,6 +29,18 @@
             "id_salle": "12",
             "debut": "30/05/2025 17:00",
             "fin": "30/05/2025 18:00"
+        },
+        {
+            "client": "Taouil Salma",
+            "id_salle": "2",
+            "debut": "01/01/2025 09:00",
+            "fin": "01/01/2025 12:00"
+        },
+        {
+            "client": "Kam David",
+            "id_salle": "2",
+            "debut": "02/05/2025 13:00",
+            "fin": "02/05/2025 16:00"
         }
     ]
 }
